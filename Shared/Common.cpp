@@ -30,8 +30,9 @@ Matrix loadData(string filename, string directory)
     double x, y;
 
     file >> n;
-    vector<int> coor_x(n, 0);
-    vector<int> coor_y(n, 0);
+
+    int* coor_x = new int[n];
+    int* coor_y = new int[n];
 
     for (int i = 0; i < n; i++)
     {
@@ -55,6 +56,9 @@ Matrix loadData(string filename, string directory)
             setDistance(matrix, from, to, distance);
         }
     }
+
+    delete[] coor_x;
+    delete[] coor_y;
 
     return matrix;
 
