@@ -1,10 +1,12 @@
-#include "OpenMP.h"
+#include "Cuda.cuh"
+
+
 
 
 int RandomNumber(int lowerLimit, int upperLimit)
 {
-    std::random_device rd; 
-    std::mt19937 gen(rd()); 
+    std::random_device rd;  // generator losowoœci (zwykle bazuj¹cy na sprzêcie)
+    std::mt19937 gen(rd()); // silnik Mersenne Twister
     std::uniform_int_distribution<> distrib(lowerLimit, upperLimit - 1);
     return distrib(gen);
 }
@@ -173,7 +175,7 @@ void Crossover(Genome& g1_in, Genome& g2_in, Genome& g1_out, Genome& g2_out)
 
 }
 
-ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
+ScoreGenome StandardGenetic(Matrix& matrix, Settings settings)
 {
 
 
@@ -198,7 +200,6 @@ ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
 
     for (int generation = 0; generation < settings.iterations; generation++)
     {
-        #pragma omp parallel for
         for (int c = 0; c < settings.crossoversPerGenerations; c++)
         {
             int parent1 = RandomNumber(0, settings.population);
@@ -214,9 +215,9 @@ ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
 
             scoreGenomes[index1].score = Score(matrix, scoreGenomes[index1].genome);
             scoreGenomes[index2].score = Score(matrix, scoreGenomes[index2].genome);
+
         }
 
-        #pragma omp parallel for
         for (int m = 0; m < maxPopulation; m++)
         {
             if (Mutate(scoreGenomes[m].genome, settings.mutationProp))

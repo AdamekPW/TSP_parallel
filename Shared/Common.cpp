@@ -1,12 +1,12 @@
 #include "pch.h"
 #include "Common.h"
 
-double calcDistance(int x1, int y1, int x2, int y2)
+float calcDistance(int x1, int y1, int x2, int y2)
 {
     return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 }
 
-void setDistance(Matrix& matrix, int from, int to, double distance)
+void setDistance(Matrix& matrix, int from, int to, float distance)
 {
     matrix.m[from][to] = distance;
     matrix.m[to][from] = distance;
@@ -27,7 +27,7 @@ Matrix loadData(string filename, string directory)
     }
 
     int n, v;
-    double x, y;
+    float x, y;
 
     file >> n;
 
@@ -42,9 +42,9 @@ Matrix loadData(string filename, string directory)
     }
 
 
-    matrix.m = new double* [n];
+    matrix.m = new float* [n];
     for (int i = 0; i < n; ++i)
-        matrix.m[i] = new double[n];
+        matrix.m[i] = new float[n];
 
     matrix.size = n;
 
@@ -52,7 +52,7 @@ Matrix loadData(string filename, string directory)
     {
         for (int to = 0; to < n; to++)
         {
-            double distance = calcDistance(coor_x[from], coor_y[from], coor_x[to], coor_y[to]);
+            float distance = calcDistance(coor_x[from], coor_y[from], coor_x[to], coor_y[to]);
             setDistance(matrix, from, to, distance);
         }
     }

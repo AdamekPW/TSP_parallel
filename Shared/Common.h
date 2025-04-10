@@ -16,9 +16,9 @@
 
 using namespace std;
 
-double calcDistance(int x1, int y1, int x2, int y2);
+float calcDistance(int x1, int y1, int x2, int y2);
 
-void setDistance(Matrix& matrix, int from, int to, double distance);
+void setDistance(Matrix& matrix, int from, int to, float distance);
 
 Matrix loadData(string filename, string directory = "../Benchmarks/");
 

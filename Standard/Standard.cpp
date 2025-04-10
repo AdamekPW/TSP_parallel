@@ -11,9 +11,9 @@ int RandomNumber(int lowerLimit, int upperLimit)
     return distrib(gen);
 }
 
-double Score(Matrix& matrix, Genome& genome)
+float Score(Matrix& matrix, Genome& genome)
 {
-    double sum = 0;
+    float sum = 0;
     for (int i = 0; i < genome.size; i++)
     {
         int from = genome.g[i];
@@ -37,9 +37,9 @@ void SimpleSample(Matrix& matrix, Genome& genome)
         genome.g[VisitedCount - 1] = i;
         Visited[i] = true;
 
-        double min1Value = numeric_limits<int>::max();
+        float min1Value = numeric_limits<int>::max();
         int min1Index = -1;
-        double min2Value = numeric_limits<int>::max();
+        float min2Value = numeric_limits<int>::max();
         int min2Index = -1;
 
         for (int j = 0; j < n; j++)
@@ -196,7 +196,7 @@ ScoreGenome StandardGenetic(Matrix& matrix, Settings settings)
         return a.score < b.score;
         });
 
-    double best = scoreGenomes[0].score;
+    float best = scoreGenomes[0].score;
 
     for (int generation = 0; generation < settings.iterations; generation++)
     {

@@ -2,7 +2,7 @@
 
 struct Matrix
 {
-    double** m;
+    float** m;
     int size;
 };
 
@@ -14,13 +14,13 @@ struct Genome
 
 struct ScoreGenome
 {
-    double score;
+    float score;
     Genome genome;
 };
 
 struct Settings
 {
-    int iterations = 20000;
+    int iterations = 10000;
     int population = 80;
     int crossoversPerGenerations = 30;
     float mutationProp = 0.02f;

@@ -11,7 +11,7 @@
 using namespace std;
 
 int RandomNumber(int LowerLimit, int UpperLimit);
-double Score(Matrix& matrix, Genome& genome);
+float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
 bool IsInGenome(Genome& genome, int value, int endIndex);
 void Crossover(Genome& g1_in, Genome& g2_in, Genome& g1_out, Genome& g2_out);
