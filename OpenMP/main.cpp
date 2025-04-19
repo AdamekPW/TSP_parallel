@@ -9,6 +9,7 @@ using namespace std;
 
 int main()
 {
+
     string filename = "berlin52.txt";
     Matrix matrix = loadData(filename, "../Benchmarks/");
 

@@ -74,6 +74,7 @@ import sys;
 
 rodzaj = ""
 filename = ""
+
 if len(sys.argv) <= 1:
     print("Nie podano argumentu.")
     exit(-1)

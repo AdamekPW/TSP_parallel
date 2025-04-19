@@ -16,6 +16,7 @@ struct ScoreGenome
 {
     float score;
     Genome genome;
+
 };
 
 struct Settings
