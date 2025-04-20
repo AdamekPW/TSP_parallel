@@ -60,12 +60,12 @@ def calcSpeed():
     print(f"Standard: {files['standard']}")
     
     if (files['openMP'] != -1):
-        openMP_speed = (files['standard'] / files['openMP']) * 100
-        print(f"OpenMP: {files['openMP']} | It is {openMP_speed:0.2f}% speed of standard version")
+        openMP_speed = (files['standard'] / files['openMP']) 
+        print(f"OpenMP: {files['openMP']} | It is {openMP_speed:0.2f} speed of standard version")
 
     if (files['cuda'] != -1):
-        cuda_speed = (files['standard'] / files['cuda']) * 100
-        print(f"Cuda: {files['cuda']} | It is {cuda_speed:0.2f}% speed of standard version")    
+        cuda_speed = (files['standard'] / files['cuda']) 
+        print(f"Cuda: {files['cuda']} | It is {cuda_speed:0.2f} speed of standard version")    
        
 
 

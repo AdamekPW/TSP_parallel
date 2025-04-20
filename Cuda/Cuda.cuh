@@ -24,12 +24,13 @@ struct CudaMatrix {
 };
 
 struct CudaScoreGenome {
-
+	int* genome;
+	float score;
 };
 
 struct ScoreCompare {
 	__host__ __device__
-		bool operator()(const ScoreGenome& a, const ScoreGenome& b) const {
+		bool operator()(const CudaScoreGenome& a, const CudaScoreGenome& b) const {
 		return a.score < b.score;
 	}
 };
@@ -41,40 +42,32 @@ struct Params {
 	int crossoversPerGeneration;
 	float mutationProp;
 
-	int randVecFrequency;
-	int randVecSize;
-	int randVecMul;
 };
-
-
-__device__ CudaMatrix d_cudaMatrix;
-__device__ Params d_params;
-__device__ ScoreGenome* d_scoreGenomes;
 
 #define CROSSOVER_THREADS_PER_BLOCK 52
 
-CudaMatrix ConvertToCudaMatrix(Matrix& matrix);
-void FreeCudaMatrix(CudaMatrix& cudaMatrix);
-
-int RandomNumber(int LowerLimit, int UpperLimit);
+int RandomNumber(int lowerLimit, int upperLimit);
 float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
+ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params);
 
+__device__ float CudaScore(int* d_genome);
+__global__ void CrossoverKernel();
+__global__ void MutationKernel();
 
-void GenerateRandomVec(int* vec, int size, int lowerLimit, int upperLimit);
+void AllocateCudaMatrix(int size);
+void FreeCudaMatrix();
+void CopyCudaMatrixFromHostToDevice(Matrix& matrix);
 
-__device__ int GetRandomInt(int lower, int upper, unsigned long seed, int threadId);
-__global__ void RandomIntsKernel(int* output, int n, int lower, int upper, unsigned long seed);
-__global__ void CrossoverGenomeCellKernel(int* randParentsVec, int* randCuttingPointsVec, int generation);
-__device__ float CudaScore(Genome* genome);
+void CopyParamsFromHostToDevice(const Params &h_params);
 
-__device__ void bitonic_sort(ScoreGenome* data, int size, ScoreCompare comp);
-__global__ void sort_score_genomes(int size);
+void AllocateCudaScoreGenomes(int maxPopulation, int n);
+void FreeCudaScoreGenomes(int maxPopulation);
+void CopyCudaScoreGenomesFromHostToDevice(ScoreGenome* h_scoreGenomes, int maxPopulation);
+ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n);
 
-void AllocateAndCopyCudaMatrix(CudaMatrix& cudaMatrix);
-void AllocateAndCopyScoreGenomes(ScoreGenome* scoreGenomes, int size);
-void AllocateAndCopyParams(Params& params);
-void FreeAndCopyScoreGenomes(ScoreGenome* scoreGenomes, int size);
 
 
 ScoreGenome CudaGenetic(Matrix& matrix, Settings settings);
+
+
