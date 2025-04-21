@@ -37,6 +37,7 @@ struct ScoreCompare {
 
 struct Params {
 	int n;
+	int iterations;
 	int population;
 	int maxPopulation;
 	int crossoversPerGeneration;
@@ -51,10 +52,12 @@ float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
 ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params);
 
+__global__ void GenerateRandomIntsKernel(int* d_array, int size, int lowerLimit, int upperLimit, unsigned long seed);
 __device__ float CudaScore(int* d_genome);
-__global__ void CrossoverKernel();
-__global__ void MutationKernel();
+__global__ void CrossoverKernel(int* d_mutationRandTable, int iteration);
+__global__ void MutationKernel(int* d_mutationRandTable, int* d_randT1, int* d_randT2, int* d_randT3, int iteration);
 
+void GenerateRandomIntsOnGPU(int* d_array, int size, int lowerLimit, int upperLimit, int seedOffset);
 void AllocateCudaMatrix(int size);
 void FreeCudaMatrix();
 void CopyCudaMatrixFromHostToDevice(Matrix& matrix);
@@ -66,7 +69,9 @@ void FreeCudaScoreGenomes(int maxPopulation);
 void CopyCudaScoreGenomesFromHostToDevice(ScoreGenome* h_scoreGenomes, int maxPopulation);
 ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n);
 
-
+void AllocateRandTables(Params& params, int** d_crossoversRandTable, int** d_mutationRandTable);
+void RandTablesInit(Params& params, int* d_crossoversRandTable, int* d_mutationRandTable);
+void FreeRandTables(int* d_crossoversRandTable, int* d_mutationRandTable);
 
 ScoreGenome CudaGenetic(Matrix& matrix, Settings settings);
 

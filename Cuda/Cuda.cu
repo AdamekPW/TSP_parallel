@@ -10,6 +10,8 @@
         }                                                                        \
     } while (0)
 
+
+
 __device__ CudaMatrix d_cudaMatrix;
 CudaMatrix* d_cudaMatrix_ptr = nullptr;
 
@@ -96,6 +98,29 @@ ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params)
     return scoreGenomes;
 }
 
+__global__ void GenerateRandomIntsKernel(int* d_array, int size, int lowerLimit, int upperLimit, unsigned long seed) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= size) return;
+
+
+    curandState state;
+    curand_init(seed, idx, 0, &state);
+
+    int range = upperLimit - lowerLimit;
+    int randVal = curand(&state) % range + lowerLimit;
+    d_array[idx] = randVal;
+}
+
+void GenerateRandomIntsOnGPU(int* d_array, int size, int lowerLimit, int upperLimit, int seedOffset) {
+    int threadsPerBlock = 256;
+    int blocks = (size + threadsPerBlock - 1) / threadsPerBlock;
+    unsigned long seed = (unsigned long)time(NULL) + seedOffset;;
+
+    GenerateRandomIntsKernel << <blocks, threadsPerBlock >> > (d_array, size, lowerLimit, upperLimit, seed);
+
+    cudaDeviceSynchronize();
+}
+
 __device__ float CudaScore(int* d_genome)
 {
     float sum = 0;
@@ -106,22 +131,6 @@ __device__ float CudaScore(int* d_genome)
         sum += d_cudaMatrix.m[from * d_params.n + to];
     }
     return sum;
-}
-
-__device__ uint32_t xorshift32(uint32_t& state) {
-    state ^= state << 13;
-    state ^= state >> 17;
-    state ^= state << 5;
-    return state;
-}
-
-__device__ int GetRandomInt(int lower, int upper, uint32_t seed) {
-    uint32_t state = seed; 
-    uint32_t randVal = xorshift32(state);
-
-    int range = upper - lower;
-    int randInt = lower + (randVal % range);
-    return randInt;
 }
 
 __device__ void swap(CudaScoreGenome& a, CudaScoreGenome& b) {
@@ -153,7 +162,7 @@ __global__ void bitonicSortKernel() {
     }
 }
 
-__global__ void CrossoverKernel()
+__global__ void CrossoverKernel(int* d_mutationRandTable, int iteration)
 {
     int c = blockIdx.x;
     int i = threadIdx.x;
@@ -162,10 +171,13 @@ __global__ void CrossoverKernel()
 
     if (i == 0)
     {
-        cuttingPoint = GetRandomInt(1, d_params.n - 1, clock64()+c*2);
-        parent1 = GetRandomInt(1, d_params.population - 1, clock64() + c * 3);
-        parent2 = GetRandomInt(1, d_params.population - 1, clock64() + c * 4);
-        while (parent1 == parent2) parent2 = GetRandomInt(1, d_params.population - 1, clock64() + c * 1 + 2);
+        int base = iteration * d_params.crossoversPerGeneration * 2;
+        parent1 = d_mutationRandTable[base + 2 * c];
+        parent2 = d_mutationRandTable[base + 2 * c + 1];
+        cuttingPoint = d_mutationRandTable[(parent1 + parent2) % d_params.population];
+        if (cuttingPoint == 0) cuttingPoint = 1;
+        if (cuttingPoint == d_params.n - 1) cuttingPoint = d_params.n - 2;
+        
         //printf("%d %d\n", parent1, parent2);
         child1 = d_params.population + 2 * c;
         child2 = d_params.population + 2 * c + 1;
@@ -227,64 +239,57 @@ __global__ void CrossoverKernel()
 
 }
 
-//inline __device__ int min(int a, int b)
-//{
-//    if (a < b) return a;
-//    return b;
-//}
-//
-//inline __device__ int max(int a, int b)
-//{
-//    if (a > b) return a;
-//    return b;
-//}
-
-__global__ void MutationKernel()
+__global__ void MutationKernel(int* d_mutationRandTable, int iteration)
 {
     int m = blockIdx.x;
     int i = threadIdx.x;
-    int mutationArea = d_params.mutationProp * 10000;
-    __shared__ int p;
+    __shared__ int type;
+    __shared__ int length, startIndex, endIndex;
+    __shared__ int copyStartPoint, copyEndPoint;
+    __shared__ int borderLeft, borderRight;
+
+    int randIndex= iteration * d_params.maxPopulation + m;
+    int randTableSize = d_params.iterations * d_params.maxPopulation;
+
+    int prop = d_mutationRandTable[randIndex];
     if (i == 0)
     {
-        p = GetRandomInt(0, 10000, clock64() + m * 2 + 1);
+        int mutationPropArea = d_params.mutationProp * 10000;
+        if (prop > mutationPropArea)
+            type = 0;
+        else if (prop < mutationPropArea / 2)
+            type = 1;
+        else
+            type = 2;
     }
     __syncthreads();
-    if (p < mutationArea)
+
+    if (type == 1 && i == 0)
     {
-        
-        __shared__ int length, startIndex, endIndex;
-        __shared__ int copyStartPoint, copyEndPoint;
-        __shared__ int borderLeft, borderRight;
+        int index1 = d_mutationRandTable[(randIndex + prop + 1) % randTableSize] % d_params.n;
+        int index2 = d_mutationRandTable[(randIndex + prop + 2) % randTableSize] % d_params.n;
+
+        //printf("%d | %d\n", index1, index2);
+        int temp = d_scoreGenomes[m].genome[index1];
+        d_scoreGenomes[m].genome[index1] = d_scoreGenomes[m].genome[index2];
+        d_scoreGenomes[m].genome[index2] = temp;
+        d_scoreGenomes[m].score = CudaScore(d_scoreGenomes[m].genome);
+    } 
+    else if (type == 2)
+    {
 
         if (i == 0)
         {
-            length = GetRandomInt(2, (int)(d_params.n / 2), clock64() + m * 7 + 3);
-            startIndex = GetRandomInt(0, d_params.n - length, clock64() + m * 3 + 1);
+            length = d_mutationRandTable[(randIndex + prop + 1) % randTableSize] % (int)(d_params.n / 2);
+            if (length < 2) length = 2;
+            startIndex = d_mutationRandTable[(randIndex + prop + 1) % randTableSize] % (d_params.n - length);
+            copyStartPoint = d_mutationRandTable[(randIndex + prop + 2) % randTableSize] % (d_params.n - length);
+            //printf("%d | %d | %d\n", startIndex, copyStartPoint, length);
             endIndex = startIndex + length;
-            copyStartPoint = GetRandomInt(0, d_params.n - length, clock64() + m * 5 + 2);
             copyEndPoint = copyStartPoint + length;
 
             borderLeft = min(copyStartPoint, startIndex);
             borderRight = max(copyEndPoint, endIndex);
-
-            //printf("length: %d\n", length);
-            //printf("startIndex: %d\n", startIndex);
-            //printf("endIndex: %d\n", endIndex);
-            //printf("copyStartPoint: %d\n", copyStartPoint);
-            //printf("copyEndPoint: %d\n", copyEndPoint);
-            //printf("borderLeft: %d\n", borderLeft);
-            //printf("borderRight: %d\n\n", borderRight);
-
-       
-            //for (int j = 0; j < d_params.n; j++)
-            //{
-            //    if (j == startIndex || j == endIndex) printf(" | ");
-            //    if (j == borderLeft || j == borderRight) printf(" || ");
-            //   
-            //    printf("%d ", d_scoreGenomes[m].genome[j]);
-            //}
-            //printf("\n");
       
         }
 
@@ -317,76 +322,15 @@ __global__ void MutationKernel()
 
         __syncthreads();
 
-
-        /*if (i == 0)
+        if (i == 0)
         {
-            for (int j = 0; j < d_params.n; j++)
-            {
-                if (j == borderLeft || j == borderRight) printf(" || ");
-                if (j == copyStartPoint|| j == copyEndPoint) printf(" | ");
-                printf("%d ", d_scoreGenomes[m].genome[j]);
-            }
-            printf("\n");
-            bool visited[CROSSOVER_THREADS_PER_BLOCK];
-            for (int j = 0; j < d_params.n; j++)
-            {
-                visited[j] = false;
-            }
-            for (int j = 0; j < d_params.n; j++)
-            {
-                int city = d_scoreGenomes[m].genome[j];
-                visited[city] = true;
-            }
-            int sum = 0;
-            for (int j = 0; j < d_params.n; j++)
-            {
-                if (!visited[j])
-                {
-                    printf("Nie znaleziono: %d \n", j);
-                    sum++;
-                }
-            }
-            printf("total: %d\n", sum);
-        }*/
+            d_scoreGenomes[m].score = CudaScore(d_scoreGenomes[m].genome);
+        }
+        
     }
 
     __syncthreads();
-    /*
-    if (p < (int)(mutationArea / 2))
-    {
-        int index1 = GetRandomInt(0, d_params.n, clock64() + i);
-        int index2 = GetRandomInt(0, d_params.n, clock64() + 2*i+1);
-
-
-        //printf("%d | %d  %d\n", i, index1, index2);
-        int temp = d_scoreGenomes[i].genome[index1];
-        d_scoreGenomes[i].genome[index1] = d_scoreGenomes[i].genome[index2];
-        d_scoreGenomes[i].genome[index2] = temp;
-    }
-    else {
-        int length = GetRandomInt(2, (int)(d_params.n / 2), clock64() + 3 * i + 8);
-        int startIndex = GetRandomInt(0, d_params.n - length, clock64() + 2 * i + 1);
-        int endIndex = startIndex + length;
-
-        int copyStartPoint = GetRandomInt(0, d_params.n - length, clock64() + 5 * i + 9);
-        int copyEndPoint = copyStartPoint + length;
-
-        int newGenome[CROSSOVER_THREADS_PER_BLOCK];
-        bool visited[CROSSOVER_THREADS_PER_BLOCK];
-
-        int index = copyStartPoint;
-        for (int j = startIndex; j < endIndex; j++)
-        {
-            int city = d_scoreGenomes[i].genome[j];
-            newGenome[index] = city;
-            visited[city] = true;
-            index++;
-        }
-
-
-
-    } */
-  
+    
 }
 
 void AllocateCudaMatrix(int size) {
@@ -492,6 +436,28 @@ void CopyCudaScoreGenomesFromHostToDevice(ScoreGenome* h_scoreGenomes, int maxPo
     delete[] tempArray;
 }
 
+void AllocateRandTables(Params& params, int** d_crossoversRandTable, int** d_mutationRandTable)
+{
+    CUDA_CHECK(cudaMalloc(d_crossoversRandTable, sizeof(int) * params.iterations * params.crossoversPerGeneration * 2));    
+    CUDA_CHECK(cudaMalloc(d_mutationRandTable, sizeof(int) * params.iterations * params.maxPopulation));
+
+}
+
+void RandTablesInit(Params& params, int* d_crossoversRandTable, int* d_mutationRandTable)
+{
+    // tablica crossoverow
+    GenerateRandomIntsOnGPU(d_crossoversRandTable, params.iterations * params.crossoversPerGeneration * 2, 0, params.n, 200);
+
+    // tablica typow
+    GenerateRandomIntsOnGPU(d_mutationRandTable, params.iterations * params.maxPopulation, 0, 10000, 2108);
+}
+
+void FreeRandTables(int* d_crossoversRandTable, int* d_mutationRandTable)
+{
+    CUDA_CHECK(cudaFree(d_crossoversRandTable));
+    CUDA_CHECK(cudaFree(d_mutationRandTable));
+}
+
 ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n) {
     ScoreGenome result;
 
@@ -513,6 +479,7 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
     
     Params params;
     params.n = matrix.size;
+    params.iterations = settings.iterations;
     params.crossoversPerGeneration = settings.crossoversPerGenerations;
     params.population = settings.population;
     params.maxPopulation = settings.population + settings.crossoversPerGenerations * 2;
@@ -531,14 +498,17 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
     AllocateCudaScoreGenomes(params.maxPopulation, params.n);
     CopyCudaScoreGenomesFromHostToDevice(scoreGenomes, params.maxPopulation);
 
+    int * d_crossoversRandTable, * d_mutationRandTable, * d_randT1, * d_randT2, * d_randT3;
+    AllocateRandTables(params, &d_crossoversRandTable, &d_mutationRandTable);
+    RandTablesInit(params, d_crossoversRandTable, d_mutationRandTable);
     // W³aœciwy algorytm
 
     for (int generation = 0; generation < settings.iterations; generation++)
     {
         //cout << generation << endl;
 
-        CrossoverKernel << < params.crossoversPerGeneration, params.n >> > ();
-        MutationKernel << < params.maxPopulation, params.n>> > ();
+        CrossoverKernel << < params.crossoversPerGeneration, params.n >> > (d_crossoversRandTable, generation);
+        MutationKernel << < params.maxPopulation, params.n >> > (d_mutationRandTable, generation);
         //cin.get();
 
         bitonicSortKernel << <1, 128 >> > ();
@@ -559,6 +529,7 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
 
     FreeCudaScoreGenomes(params.maxPopulation);
 
+    //FreeRandTables(d_crossoversRandTable, d_mutationRandTable);
 
     for (int i = 0; i < params.maxPopulation; i++)
     {
