@@ -45,7 +45,7 @@ struct Params {
 
 };
 
-#define CROSSOVER_THREADS_PER_BLOCK 52
+#define CROSSOVER_THREADS_PER_BLOCK 200
 
 int RandomNumber(int lowerLimit, int upperLimit);
 float Score(Matrix& matrix, Genome& genome);
@@ -55,7 +55,7 @@ ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params);
 __global__ void GenerateRandomIntsKernel(int* d_array, int size, int lowerLimit, int upperLimit, unsigned long seed);
 __device__ float CudaScore(int* d_genome);
 __global__ void CrossoverKernel(int* d_mutationRandTable, int iteration);
-__global__ void MutationKernel(int* d_mutationRandTable, int* d_randT1, int* d_randT2, int* d_randT3, int iteration);
+__global__ void MutationKernel(int* d_mutationRandTable, int iteration);
 
 void GenerateRandomIntsOnGPU(int* d_array, int size, int lowerLimit, int upperLimit, int seedOffset);
 void AllocateCudaMatrix(int size);

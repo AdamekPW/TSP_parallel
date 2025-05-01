@@ -21,8 +21,8 @@ struct ScoreGenome
 
 struct Settings
 {
-    int iterations = 10000;
-    int population = 68;
-    int crossoversPerGenerations = 30;
+    int iterations = 2000;
+    int population = 160;
+    int crossoversPerGenerations = 48;
     float mutationProp = 0.02f;
 };

@@ -1,14 +1,6 @@
 #include "OpenMP.h"
 
 
-int RandomNumber(int lowerLimit, int upperLimit)
-{
-    std::random_device rd; 
-    std::mt19937 gen(rd()); 
-    std::uniform_int_distribution<> distrib(lowerLimit, upperLimit - 1);
-    return distrib(gen);
-}
-
 float Score(Matrix& matrix, Genome& genome)
 {
     float sum = 0;
@@ -103,17 +95,18 @@ bool Mutate(Genome& genome, float propability)
         int copyStartPoint = RandomNumber(0, genome.size - length);
         int copyEndPoint = copyStartPoint + length;
 
+        bool visited[MAX_N] = { false };
+
         Genome newGenome;
         newGenome.size = genome.size;
         newGenome.g = new int[genome.size];
 
-        for (int i = 0; i < newGenome.size; i++)
-            newGenome.g[i] = -1;
-
         int index = copyStartPoint;
         for (int i = startIndex; i < endIndex; i++)
         {
-            newGenome.g[index] = genome.g[i];
+            int city = genome.g[i];
+            newGenome.g[index] = city;
+            visited[city] = true;
             index++;
         }
 
@@ -122,17 +115,17 @@ bool Mutate(Genome& genome, float propability)
         {
             while (index >= copyStartPoint && index < copyEndPoint) index++;
 
-            if (!IsInGenome(newGenome, genome.g[i]) && index < newGenome.size)
+            int city = genome.g[i];
+            if (!visited[city] && index < newGenome.size)
             {
-                newGenome.g[index] = genome.g[i];
+                newGenome.g[index] = city;
+                visited[city] = true;
                 index++;
             }
         }
 
         delete[] genome.g;
         genome.g = newGenome.g;
-
-
 
     }
     return true;
@@ -143,11 +136,18 @@ void Crossover(Genome& g1_in, Genome& g2_in, Genome& g1_out, Genome& g2_out)
     int n = g1_in.size;
     int cuttingPoint = RandomNumber(1, n - 1);
 
+    bool visited1[MAX_N] = { false };
+    bool visited2[MAX_N] = { false };
+
     // Kopiuj lewe czesci od cuttingPoint do potomstwa
     for (int i = 0; i < cuttingPoint; i++)
     {
-        g1_out.g[i] = g1_in.g[i];
-        g2_out.g[i] = g2_in.g[i];
+        int city1 = g1_in.g[i];
+        int city2 = g2_in.g[i];
+        g1_out.g[i] = city1;
+        g2_out.g[i] = city2;
+        visited1[city1] = true;
+        visited2[city2] = true;
     }
 
     int g1_out_index = cuttingPoint;
@@ -157,26 +157,26 @@ void Crossover(Genome& g1_in, Genome& g2_in, Genome& g1_out, Genome& g2_out)
     // Kopiuj kolejno pozostale, o ile nie wystepuja w potomstwie
     for (int i = 0; i < n; i++)
     {
-        if (!IsInGenome(g1_out, g2_in.g[i], g1_out_index))
+        int city1 = g2_in.g[i];
+        int city2 = g1_in.g[i];
+        if (!visited1[city1])
         {
-            g1_out.g[g1_out_index] = g2_in.g[i];
+            g1_out.g[g1_out_index] = city1;
             g1_out_index++;
+            visited1[city1] = true;
         }
-
-        if (!IsInGenome(g2_out, g1_in.g[i], g2_out_index))
+        if (!visited2[city2])
         {
-            g2_out.g[g2_out_index] = g1_in.g[i];
+            g2_out.g[g2_out_index] = city2;
             g2_out_index++;
+            visited2[city2] = true;
         }
     }
-
 
 }
 
 ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
 {
-
-
     int maxPopulation = settings.population + settings.crossoversPerGenerations * 2;
 
     int n = matrix.size;
@@ -198,7 +198,7 @@ ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
 
     for (int generation = 0; generation < settings.iterations; generation++)
     {
-        #pragma omp parallel for
+        #pragma omp parallel for default(none) shared(scoreGenomes, settings, matrix)
         for (int c = 0; c < settings.crossoversPerGenerations; c++)
         {
             int parent1 = RandomNumber(0, settings.population);
@@ -216,7 +216,7 @@ ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
             scoreGenomes[index2].score = Score(matrix, scoreGenomes[index2].genome);
         }
 
-        #pragma omp parallel for
+        #pragma omp parallel for default(none) shared(scoreGenomes, settings, matrix, maxPopulation)
         for (int m = 0; m < maxPopulation; m++)
         {
             if (Mutate(scoreGenomes[m].genome, settings.mutationProp))
@@ -229,13 +229,6 @@ ScoreGenome OpenMPGenetic(Matrix& matrix, Settings settings)
         std::sort(scoreGenomes, scoreGenomes + maxPopulation, [](const ScoreGenome& a, const ScoreGenome& b) {
             return a.score < b.score;
             });
-
-        if (scoreGenomes[0].score < best)
-        {
-            best = scoreGenomes[0].score;
-            cout << best << endl;
-
-        }
 
     }
 

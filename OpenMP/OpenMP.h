@@ -7,10 +7,10 @@
 #include <iostream>
 #include <random>
 #include <omp.h>
+#include "Common.h"
 
 using namespace std;
 
-int RandomNumber(int lowerLimit, int upperLimit);
 float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
 bool IsInGenome(Genome& genome, int value, int endIndex);

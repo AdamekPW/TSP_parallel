@@ -6,11 +6,10 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
-
+#include "Common.h"
 
 using namespace std;
 
-int RandomNumber(int LowerLimit, int UpperLimit);
 float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
 bool IsInGenome(Genome& genome, int value, int endIndex);

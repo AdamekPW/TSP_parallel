@@ -208,7 +208,7 @@ __global__ void CrossoverKernel(int* d_mutationRandTable, int iteration)
     if (i == 0)
     {
         int index = cuttingPoint;
-        for (int cityIndex = 0; cityIndex < CROSSOVER_THREADS_PER_BLOCK; cityIndex++)
+        for (int cityIndex = 0; cityIndex < d_params.n; cityIndex++)
         {
             int city = d_scoreGenomes[parent1].genome[cityIndex];
             if (!visited1[city])
@@ -224,7 +224,7 @@ __global__ void CrossoverKernel(int* d_mutationRandTable, int iteration)
     if (i == 1)
     {
         int index = cuttingPoint;
-        for (int cityIndex = 0; cityIndex < CROSSOVER_THREADS_PER_BLOCK; cityIndex++)
+        for (int cityIndex = 0; cityIndex < d_params.n; cityIndex++)
         {
             int city = d_scoreGenomes[parent2].genome[cityIndex];
             if (!visited2[city])
@@ -356,8 +356,12 @@ void CopyCudaMatrixFromHostToDevice(Matrix& matrix) {
     float* host_flat = new float[n * n];
 
     for (int i = 0; i < n; ++i)
+    {
         for (int j = 0; j < n; ++j)
+        {
             host_flat[i * n + j] = matrix.m[i][j];
+        }
+    }
 
     CudaMatrix h_temp;
     CUDA_CHECK(cudaMemcpyFromSymbol(&h_temp, d_cudaMatrix, sizeof(CudaMatrix)));
@@ -476,7 +480,7 @@ ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n) {
 
 ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
 {
-    
+    settings.iterations = 100;
     Params params;
     params.n = matrix.size;
     params.iterations = settings.iterations;

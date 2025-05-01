@@ -57,15 +57,17 @@ def calcSpeed():
         except FileNotFoundError:
             print(f"File {filename} not found")
     
-    print(f"Standard: {files['standard']}")
+    d = 1000000
+
+    print(f"Standard: {files['standard']/d:0.2f} ms ")
     
     if (files['openMP'] != -1):
         openMP_speed = (files['standard'] / files['openMP']) 
-        print(f"OpenMP: {files['openMP']} | It is {openMP_speed:0.2f} speed of standard version")
+        print(f"OpenMP: {files['openMP']/d:0.2f} ms | It is {openMP_speed:0.2f} speed of standard version")
 
     if (files['cuda'] != -1):
         cuda_speed = (files['standard'] / files['cuda']) 
-        print(f"Cuda: {files['cuda']} | It is {cuda_speed:0.2f} speed of standard version")    
+        print(f"Cuda: {files['cuda']/d:0.2f} ms  | It is {cuda_speed:0.2f} speed of standard version")    
        
 
 

@@ -1,6 +1,63 @@
 #include "pch.h"
 #include "Common.h"
 
+int RandomNumber(int lowerLimit, int upperLimit)
+{
+    std::random_device rd;  // generator losowoœci (zwykle bazuj¹cy na sprzêcie)
+    std::mt19937 gen(rd()); // silnik Mersenne Twister
+    std::uniform_int_distribution<> distrib(lowerLimit, upperLimit - 1);
+    return distrib(gen);
+}
+
+#include <set>
+#include <utility> // std::pair
+
+Matrix RandomMatrix(int n)
+{
+    Matrix matrix;
+
+    int* coor_x = new int[n];
+    int* coor_y = new int[n];
+    std::set<std::pair<int, int>> used_points;
+
+    int i = 0;
+    while (i < n)
+    {
+        int x = RandomNumber(0, 10000);
+        int y = RandomNumber(0, 10000);
+        std::pair<int, int> point = std::make_pair(x, y);
+
+        if (used_points.find(point) == used_points.end())
+        {
+            used_points.insert(point);
+            coor_x[i] = x;
+            coor_y[i] = y;
+            i++;
+        }
+        // else: powtórzony punkt, wiêc losujemy ponownie
+    }
+
+    matrix.m = new float* [n];
+    for (int i = 0; i < n; ++i)
+        matrix.m[i] = new float[n];
+
+    matrix.size = n;
+
+    for (int from = 0; from < n; from++)
+    {
+        for (int to = 0; to < n; to++)
+        {
+            float distance = calcDistance(coor_x[from], coor_y[from], coor_x[to], coor_y[to]);
+            setDistance(matrix, from, to, distance);
+        }
+    }
+
+    delete[] coor_x;
+    delete[] coor_y;
+
+    return matrix;
+}
+
 float calcDistance(int x1, int y1, int x2, int y2)
 {
     return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
@@ -97,6 +154,26 @@ void SaveTime(string filename, chrono::microseconds time, string directory)
     }
 
     file << time.count() << '\n';
+
+    file.close();
+}
+
+void SaveTimes(string filename, vector<chrono::microseconds>& times, string directory)
+{
+    std::stringstream ss;
+    ss << directory << filename;
+    std::ofstream file(ss.str());
+
+    if (!file.is_open())
+    {
+        std::cerr << "Opening file error: " << filename << std::endl;
+        return;
+    }
+
+    for (const auto& time : times)
+    {
+        file << (float)time.count() / 1000000 << ", ";
+    }
 
     file.close();
 }
