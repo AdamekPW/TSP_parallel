@@ -10,7 +10,7 @@ using namespace std;
 int main()
 {
 
-    vector<chrono::microseconds> Times;
+    /*vector<chrono::microseconds> Times;
 
     Settings settings;
     Matrix matrix = loadData("berlin52.txt", "../Benchmarks/");
@@ -33,12 +33,13 @@ int main()
     }
 
     freeMatrix(matrix);
-    SaveTimes("OpenMPTimes", Times);
+    SaveTimes("OpenMPTimes", Times); */
 
-    /*string filename = "bier127.txt";
+    string filename = "berlin52.txt";
     Matrix matrix = loadData(filename, "../Benchmarks/");
 
     Settings settings;
+    settings.iterations = 5000;
 
     Timer timer;
 
@@ -51,7 +52,7 @@ int main()
     SaveData("openMP.txt", result);
     SaveTime("openMP.txt", timer.GetResult());
 
-    cin.get();*/
+
 
     return 0;
 }

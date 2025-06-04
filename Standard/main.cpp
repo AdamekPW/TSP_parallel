@@ -10,7 +10,7 @@ using namespace std;
 
 int main()
 {
-    vector<chrono::microseconds> Times;
+    /*vector<chrono::microseconds> Times;
 
     Settings settings;
     Matrix matrix = loadData("berlin52.txt", "../Benchmarks/");
@@ -36,26 +36,26 @@ int main()
 
     SaveTimes("StandardTimes", Times);
     
-
+    */
     
-    //string filename = "berlin52.txt";
-    //
-    //
-    ////Matrix matrix = loadData(filename);
-    //
-    //Matrix matrix = RandomMatrix(52);
-    //cout << matrix.size << endl;
-    ////printMatrix(matrix);
-    //
-    //Timer timer;
-    //timer.Start();
-    //ScoreGenome result = StandardGenetic(matrix, settings);
-    //timer.End();
-    //
-    //cout << "Done!" << endl;
+    string filename = "berlin52.txt";
+    
+    Settings settings;
+    settings.iterations = 2000;
+    Matrix matrix = loadData(filename);
+    
 
-    //SaveData("standard.txt", result);
-    //SaveTime("standard.txt", timer.GetResult());
+    //printMatrix(matrix);
+    
+    Timer timer;
+    timer.Start();
+    ScoreGenome result = StandardGenetic(matrix, settings);
+    timer.End();
+    
+    cout << "Done!" << endl;
+
+    SaveData("standard.txt", result);
+    SaveTime("standard.txt", timer.GetResult());
 
     //cin.get();
 

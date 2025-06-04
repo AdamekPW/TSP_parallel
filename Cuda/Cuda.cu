@@ -21,13 +21,6 @@ __device__ CudaScoreGenome* d_scoreGenomes;
 CudaScoreGenome* d_scoreGenomes_ptr = nullptr;
 
 
-int RandomNumber(int lowerLimit, int upperLimit)
-{
-    std::random_device rd;  // generator losowoœci (zwykle bazuj¹cy na sprzêcie)
-    std::mt19937 gen(rd()); // silnik Mersenne Twister
-    std::uniform_int_distribution<> distrib(lowerLimit, upperLimit - 1);
-    return distrib(gen);
-}
 
 float Score(Matrix& matrix, Genome& genome)
 {
@@ -81,7 +74,7 @@ void SimpleSample(Matrix & matrix, Genome & genome)
 
 ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params)
 {
-    ScoreGenome* scoreGenomes = new ScoreGenome[params.maxPopulation];
+    ScoreGenome* scoreGenomes = new ScoreGenome[params.maxPopulationWithPadding];
 
     for (int i = 0; i < params.maxPopulation; i++)
     {
@@ -91,7 +84,15 @@ ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params)
         scoreGenomes[i].score = Score(matrix, scoreGenomes[i].genome);
     }
 
-    std::sort(scoreGenomes, scoreGenomes + params.population, [](const ScoreGenome& a, const ScoreGenome& b) {
+    for (int i = params.maxPopulation; i < params.maxPopulationWithPadding; i++)
+    {
+        scoreGenomes[i].genome.g = new int[params.n];
+        memset(scoreGenomes[i].genome.g, 0, params.n);
+        scoreGenomes[i].genome.size = params.n;
+        scoreGenomes[i].score = numeric_limits<float>::max();
+    }
+
+    std::sort(scoreGenomes, scoreGenomes + params.maxPopulation, [](const ScoreGenome& a, const ScoreGenome& b) {
         return a.score < b.score;
         });
 
@@ -143,7 +144,7 @@ __global__ void bitonicSortKernel() {
     unsigned int tid = threadIdx.x;
 
     // Bitonic sort wymaga rozmiaru bêd¹cego potêg¹ 2
-    for (int k = 2; k <= d_params.maxPopulation; k <<= 1) {
+    for (int k = 2; k <= d_params.maxPopulationWithPadding; k <<= 1) {
         for (int j = k >> 1; j > 0; j >>= 1) {
             unsigned int ixj = tid ^ j;
 
@@ -480,7 +481,6 @@ ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n) {
 
 ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
 {
-    settings.iterations = 100;
     Params params;
     params.n = matrix.size;
     params.iterations = settings.iterations;
@@ -488,6 +488,11 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
     params.population = settings.population;
     params.maxPopulation = settings.population + settings.crossoversPerGenerations * 2;
     params.mutationProp = settings.mutationProp;
+
+    int pow2 = 1;
+    while (pow2 < params.maxPopulation) pow2 <<= 1; // dopelnianie do potegi dwojki
+    params.maxPopulationWithPadding = pow2;
+
 
     ScoreGenome* scoreGenomes = FullSimpleSample(matrix, params);
 
@@ -499,8 +504,8 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
 
     CopyParamsFromHostToDevice(params);
 
-    AllocateCudaScoreGenomes(params.maxPopulation, params.n);
-    CopyCudaScoreGenomesFromHostToDevice(scoreGenomes, params.maxPopulation);
+    AllocateCudaScoreGenomes(params.maxPopulationWithPadding, params.n);
+    CopyCudaScoreGenomesFromHostToDevice(scoreGenomes, params.maxPopulationWithPadding);
 
     int * d_crossoversRandTable, * d_mutationRandTable, * d_randT1, * d_randT2, * d_randT3;
     AllocateRandTables(params, &d_crossoversRandTable, &d_mutationRandTable);
@@ -521,25 +526,19 @@ ScoreGenome CudaGenetic(Matrix &matrix, Settings settings)
     }
 
 
-    // sekcja czyszczenia w GPU
     FreeCudaMatrix();
 
-    /*for (int i = 0; i < params.maxPopulation; i++)
-    {
-        ScoreGenome r = CopyScoreGenomeFromDeviceToHost(i, params.n);
-        cout << i << " : " << r.score << endl;
-    }*/
     ScoreGenome result = CopyScoreGenomeFromDeviceToHost(0, params.n);
 
     FreeCudaScoreGenomes(params.maxPopulation);
 
-    //FreeRandTables(d_crossoversRandTable, d_mutationRandTable);
 
     for (int i = 0; i < params.maxPopulation; i++)
     {
         freeGenome(scoreGenomes[i].genome);
     }
     delete[] scoreGenomes;
+
 
     return result;
 }

@@ -42,12 +42,11 @@ struct Params {
 	int maxPopulation;
 	int crossoversPerGeneration;
 	float mutationProp;
-
+	int maxPopulationWithPadding;
 };
 
 #define CROSSOVER_THREADS_PER_BLOCK 200
 
-int RandomNumber(int lowerLimit, int upperLimit);
 float Score(Matrix& matrix, Genome& genome);
 void SimpleSample(Matrix& matrix, Genome& genome);
 ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params);

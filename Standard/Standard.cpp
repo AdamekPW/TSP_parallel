@@ -232,6 +232,12 @@ ScoreGenome StandardGenetic(Matrix& matrix, Settings settings)
         std::sort(scoreGenomes, scoreGenomes + maxPopulation, [](const ScoreGenome& a, const ScoreGenome& b) {
             return a.score < b.score;
             });
+
+        if (scoreGenomes[0].score < best)
+        {
+            best = scoreGenomes[0].score;
+			cout << "Generation: " << generation << ", Best score: " << best << endl;
+        }
     }
 
 
