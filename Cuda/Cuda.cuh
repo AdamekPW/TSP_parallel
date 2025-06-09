@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <iostream>
 #include <random>
+#include <omp.h>
 
 using namespace std;
 
@@ -35,43 +36,26 @@ struct ScoreCompare {
 	}
 };
 
-struct Params {
-	int n;
-	int iterations;
-	int population;
-	int maxPopulation;
-	int crossoversPerGeneration;
-	float mutationProp;
-	int maxPopulationWithPadding;
-};
 
-#define CROSSOVER_THREADS_PER_BLOCK 200
+
+#define MAX_THREADS 64
+#define N 52
 
 float Score(Matrix& matrix, Genome& genome);
-void SimpleSample(Matrix& matrix, Genome& genome);
-ScoreGenome* FullSimpleSample(Matrix& matrix, Params& params);
 
-__global__ void GenerateRandomIntsKernel(int* d_array, int size, int lowerLimit, int upperLimit, unsigned long seed);
-__device__ float CudaScore(int* d_genome);
-__global__ void CrossoverKernel(int* d_mutationRandTable, int iteration);
-__global__ void MutationKernel(int* d_mutationRandTable, int iteration);
-
-void GenerateRandomIntsOnGPU(int* d_array, int size, int lowerLimit, int upperLimit, int seedOffset);
 void AllocateCudaMatrix(int size);
 void FreeCudaMatrix();
 void CopyCudaMatrixFromHostToDevice(Matrix& matrix);
 
-void CopyParamsFromHostToDevice(const Params &h_params);
-
-void AllocateCudaScoreGenomes(int maxPopulation, int n);
-void FreeCudaScoreGenomes(int maxPopulation);
-void CopyCudaScoreGenomesFromHostToDevice(ScoreGenome* h_scoreGenomes, int maxPopulation);
-ScoreGenome CopyScoreGenomeFromDeviceToHost(int index, int n);
-
-void AllocateRandTables(Params& params, int** d_crossoversRandTable, int** d_mutationRandTable);
-void RandTablesInit(Params& params, int* d_crossoversRandTable, int* d_mutationRandTable);
-void FreeRandTables(int* d_crossoversRandTable, int* d_mutationRandTable);
-
 ScoreGenome CudaGenetic(Matrix& matrix, Settings settings);
 
+void Crossover(int* g1_in, int* g2_in, int* g1_out, int* g2_out, int n);
 
+__device__ float GetScore(int* sequence, int n);
+__device__ bool IsConsistent(int* sequence, int n);
+__device__ int DeviceRandomNumber(int lowerLimit, int upperLimit, int idx, unsigned int seed);
+__device__ int DeviceRandomNumber(int lowerLimit, int upperLimit, curandState* state);
+
+__global__ void InitPopulationKernel(int* d_population, int maxPopulation, int n, curandState* statesTable);
+__global__ void InitRandomStatesKernel(curandState* states, unsigned int seed);
+__global__ void MutationKernel(int* population, int n, curandState* d_curandStates);

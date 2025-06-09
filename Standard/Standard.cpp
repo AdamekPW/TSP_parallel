@@ -233,11 +233,11 @@ ScoreGenome StandardGenetic(Matrix& matrix, Settings settings)
             return a.score < b.score;
             });
 
-        if (scoreGenomes[0].score < best)
-        {
-            best = scoreGenomes[0].score;
-			cout << "Generation: " << generation << ", Best score: " << best << endl;
-        }
+   //     if (scoreGenomes[0].score < best)
+   //     {
+   //         best = scoreGenomes[0].score;
+			//cout << "Generation: " << generation << ", Best score: " << best << endl;
+   //     }
     }
 
 

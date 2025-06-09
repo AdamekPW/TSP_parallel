@@ -5,7 +5,7 @@ def wczytaj_dane_z_pliku(nazwa_pliku):
     return liczby
 
 
-labels = [180, 360, 540, 720, 900, 1080, 1260, 1440, 1620, 1800]
+labels = wczytaj_dane_z_pliku('Times/x.txt')
 standard = wczytaj_dane_z_pliku('Times/StandardTimes')
 openMP = wczytaj_dane_z_pliku('Times/OpenMPTimes')
 cuda = wczytaj_dane_z_pliku('Times/CudaTimes')

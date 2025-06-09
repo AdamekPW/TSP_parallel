@@ -19,7 +19,7 @@
 
 using namespace std;
 
-#define MAX_N 200
+#define MAX_N 1000
 
 int RandomNumber(int LowerLimit, int UpperLimit);
 
